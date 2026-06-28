@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-bg text-text font-sans antialiased;
+  }
+
+  h1, h2, h3 {
+    @apply font-display;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  input, textarea, select {
+    @apply bg-surface-light text-text placeholder-muted rounded-lg border border-border
+           focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent
+           transition-colors;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-accent text-bg font-semibold px-5 py-2.5 rounded-lg
+           hover:bg-accent-dim transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-surface-light text-text border border-border px-5 py-2.5 rounded-lg
+           hover:bg-surface-hover transition-colors;
+  }
+
+  .btn-danger {
+    @apply bg-danger text-white font-semibold px-5 py-2.5 rounded-lg
+           hover:opacity-80 transition-opacity;
+  }
+
+  .card {
+    @apply bg-surface rounded-xl border border-border p-6;
+  }
+
+  .form-group {
+    @apply flex flex-col gap-1.5;
+  }
+
+  .form-label {
+    @apply text-sm font-medium text-muted;
+  }
+
+  .form-input {
+    @apply w-full px-4 py-2.5 text-sm;
+  }
+
+  .form-error {
+    @apply text-danger text-xs mt-1;
+  }
+}
