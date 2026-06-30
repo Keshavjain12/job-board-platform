@@ -4,27 +4,40 @@ A full-stack job board application built with **Django REST Framework** (backend
 
 ## Features
 
-- JWT-based authentication (register, login, current-user endpoint)
+- JWT-based authentication (register, login, refresh, current-user endpoint)
 - Role-based permissions (Seeker vs Employer)
 - Employers can create, update, and manage their own job postings
-- Seekers can browse/filter active jobs and apply
+- Seekers can browse/filter active jobs (by location, type, title, salary) and apply
+- Applicant profiles — headline, bio, skills, and resume upload
+- Resume upload at application time too (per-application resume)
 - Prevents duplicate applications from the same seeker
 - Employers can view and update application status for their own jobs
 - Unrelated users cannot view applications they don't own
+- React Router with 7 pages and role-protected routes
 
 ## Tech Stack
 
-**Backend:** Python 3.11+, Django 4.x, Django REST Framework, SimpleJWT, SQLite
+**Backend:** Python 3.11+, Django 4.x, Django REST Framework, SimpleJWT, PostgreSQL (production), SQLite (in-memory, tests only)
 **Frontend:** React, React Router, Axios
 
 ## Project Structure
 
 ```
-job-board-platform/
-├── jobboard_backend/      # Django project
-│   ├── accounts/          # User registration, login, profile
-│   └── jobs/               # Job postings & applications
-└── frontend/               # React app
+Week 4/
+├── jobboard_backend/
+│   └── jobboard_backend/      # Django project
+│       ├── jobboard/           # Settings, root URLs
+│       ├── accounts/           # Custom User model, auth endpoints
+│       ├── jobs/                # Job listings, applicant profiles, applications
+│       ├── docs/                # Screenshots
+│       ├── .env.example
+│       └── manage.py
+└── job-board-frontend/         # React app
+    └── src/
+        ├── api/                 # client.js, auth.js, jobs.js
+        ├── context/             # AuthContext
+        ├── components/          # Navbar, JobCard, ProtectedRoute, etc.
+        └── pages/                # 7 pages (see below)
 ```
 
 ## Setup
@@ -32,40 +45,72 @@ job-board-platform/
 ### 1. Backend
 
 ```powershell
-cd jobboard_backend
+cd jobboard_backend\jobboard_backend
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 2. Environment variables
+### 2. Create the PostgreSQL database
 
-Copy `.env.example` to `.env` and fill in your own values:
+Make sure PostgreSQL is installed and running, then create the database and user (adjust password to match your `.env`):
+
+```sql
+CREATE DATABASE jobboard;
+```
+
+### 3. Environment variables
+
+Copy `.env.example` to `.env` and fill in your real values:
 
 ```powershell
 copy .env.example .env
 ```
 
-`.env.example` (included in the repo):
+`.env.example`:
 ```
-SECRET_KEY=your-secret-key-here
-DEBUG=True
+DJANGO_SECRET_KEY=change-me-to-a-long-random-string
+DJANGO_DEBUG=True
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+
+DB_NAME=jobboard
+DB_USER=jobboard_user
+DB_PASSWORD=changeme
+DB_HOST=localhost
+DB_PORT=5432
+
+CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 ```
 
-### 3. Run migrations and start the server
+### 4. Run migrations and start the server
 
 ```powershell
 python manage.py migrate
+python manage.py createsuperuser
 python manage.py runserver
 ```
+API runs at `http://localhost:8000/api/` · Admin at `http://localhost:8000/admin/`
 
-### 4. Frontend
+### 5. Frontend
 
 ```powershell
-cd frontend
+cd job-board-frontend
 npm install
-npm start
+npm run dev
 ```
+App runs at `http://localhost:3000`
+
+## React Pages
+
+| Route | Page | Access |
+|---|---|---|
+| `/` | Job listings + filters | Public |
+| `/login` | Sign in | Public |
+| `/register` | Register (seeker or employer) | Public |
+| `/jobs/:id` | Job detail + apply | Public (apply requires login) |
+| `/dashboard` | Seeker: application tracker · Employer: manage listings | Auth required |
+| `/post-job`, `/post-job/:id` | Create / edit a job listing | Employer only |
+| `/profile` | Edit headline, bio, skills, resume | Auth required |
 
 ## Testing
 
@@ -99,24 +144,47 @@ jobs/tests.py::TestApplications::test_unrelated_user_cannot_view_application PAS
 
 ## API Endpoints
 
+### Authentication
 | Method | Endpoint | Description |
 |---|---|---|
-| POST | `/api/accounts/register/` | Register a new user |
-| POST | `/api/accounts/login/` | Login, get JWT tokens |
-| GET | `/api/accounts/me/` | Get current user |
-| GET | `/api/jobs/` | List active jobs (filterable) |
+| POST | `/api/auth/register/` | Register a new user (seeker or employer) |
+| POST | `/api/auth/login/` | Login, get `access` + `refresh` JWT tokens |
+| POST | `/api/auth/refresh/` | Refresh access token |
+| GET | `/api/auth/me/` | Get current logged-in user |
+
+### Jobs, profiles, and applications (full CRUD via DRF viewsets)
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/jobs/` | List active jobs (public; filterable) |
 | POST | `/api/jobs/` | Create a job (employer only) |
+| GET | `/api/jobs/<id>/` | Job detail |
 | PATCH | `/api/jobs/<id>/` | Update a job (owner only) |
-| POST | `/api/jobs/<id>/apply/` | Apply to a job (seeker only) |
-| GET | `/api/applications/<id>/` | View application (owner only) |
-| PATCH | `/api/applications/<id>/` | Update application status (employer only) |
+| DELETE | `/api/jobs/<id>/` | Delete a job (owner only) |
+| GET | `/api/profiles/` | List/view applicant profiles |
+| POST | `/api/profiles/` | Create your applicant profile (headline, bio, skills, resume) |
+| PATCH | `/api/profiles/<id>/` | Update your profile |
+| GET | `/api/applications/` | List your applications (seeker) or applications to your jobs (employer) |
+| POST | `/api/applications/` | Apply to a job (seeker only — send `job`, `cover_letter`, optional `resume`) |
+| PATCH | `/api/applications/<id>/` | Update application status (employer, on their own job's applications) |
+
+### Filtering
+```
+GET /api/jobs/?location=austin
+GET /api/jobs/?job_type=remote
+GET /api/jobs/?title=engineer
+GET /api/jobs/?salary_min=80000
+GET /api/jobs/?search=django
+GET /api/jobs/?ordering=-created_at
+GET /api/applications/?status=reviewed
+GET /api/applications/?job=3
+```
 
 ## Screenshots
 
-![Job listings](docs/screenshot-jobs.png)
-![Job seeker dashboard](docs/screenshot-dashboard.png)
-![Django admin panel](docs/screenshot-admin.png)
+![Job listings](jobboard_backend/jobboard_backend/docs/Screenshot-jobs.png)
+![Job seeker dashboard](jobboard_backend/jobboard_backend/docs/Screenshot-dashboard.png)
+![Django admin panel](jobboard_backend/jobboard_backend/docs/Screenshot-admin.png)
 
 ## Author
-
+Keshav Raj Jain
 Built as part of a Month 1 / Week 4 capstone assignment.
