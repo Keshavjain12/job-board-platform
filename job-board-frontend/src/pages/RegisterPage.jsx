@@ -15,6 +15,7 @@ export default function RegisterPage() {
     role: 'seeker',
     first_name: '',
     last_name: '',
+    company_name: '',
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -93,6 +94,13 @@ export default function RegisterPage() {
                 <input id="last_name" name="last_name" className="form-input" value={form.last_name} onChange={handleChange} />
               </div>
             </div>
+
+            {form.role === 'employer' && (
+              <div className="form-group">
+                <label htmlFor="company_name" className="form-label">Company name</label>
+                <input id="company_name" name="company_name" className="form-input" placeholder="Acme Corp" value={form.company_name} onChange={handleChange} required />
+              </div>
+            )}
 
             <div className="form-group">
               <label htmlFor="username" className="form-label">Username</label>

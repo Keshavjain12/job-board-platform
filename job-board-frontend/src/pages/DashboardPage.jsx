@@ -7,7 +7,8 @@ import Spinner from '../components/Spinner.jsx'
 import EmptyState from '../components/EmptyState.jsx'
 import { getJobTypeMeta } from '../utils/jobTypes.js'
 
-// ─── Seeker view ─────────────────────────────────────────────────────────────
+const STATUS_OPTIONS = ['applied', 'reviewed', 'interview', 'rejected', 'hired']
+
 function SeekerDashboard() {
   const [apps, setApps] = useState([])
   const [loading, setLoading] = useState(true)
@@ -36,41 +37,30 @@ function SeekerDashboard() {
         />
       ) : (
         <div className="flex flex-col gap-3">
-          {apps.map((app) => {
-            const meta = getJobTypeMeta(app.job_detail?.job_type)
-            return (
-              <div key={app.id} className="card flex items-start gap-4">
-                <div
-                  className="w-1 self-stretch rounded-full shrink-0"
-                  style={{ backgroundColor: meta.color }}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h3 className="font-display text-lg text-text leading-snug">
-                        {app.job_detail?.title ?? `Job #${app.job}`}
-                      </h3>
-                      <p className="text-sm text-muted">{app.job_detail?.company_name}</p>
-                    </div>
-                    <StatusBadge status={app.status} />
-                  </div>
-                  <p className="text-xs font-mono text-muted mt-3">
-                    Applied {new Date(app.applied_at).toLocaleDateString('en-US', { dateStyle: 'medium' })}
-                  </p>
-                  {app.cover_letter && (
-                    <p className="text-xs text-muted mt-2 line-clamp-2 italic">"{app.cover_letter}"</p>
-                  )}
+          {apps.map((app) => (
+            <div key={app.id} className="card flex items-start gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="font-display text-lg text-text leading-snug">
+                    {app.job_title ?? `Job #${app.job}`}
+                  </h3>
+                  <StatusBadge status={app.status} />
                 </div>
+                <p className="text-xs font-mono text-muted mt-3">
+                  Applied {new Date(app.applied_at).toLocaleDateString('en-US', { dateStyle: 'medium' })}
+                </p>
+                {app.cover_letter && (
+                  <p className="text-xs text-muted mt-2 line-clamp-2 italic">"{app.cover_letter}"</p>
+                )}
               </div>
-            )
-          })}
+            </div>
+          ))}
         </div>
       )}
     </div>
   )
 }
 
-// ─── Employer view ────────────────────────────────────────────────────────────
 function EmployerDashboard() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -81,9 +71,11 @@ function EmployerDashboard() {
   const [loadingApps, setLoadingApps] = useState({})
 
   useEffect(() => {
-    // Fetch only this employer's jobs
-    getJobs({ posted_by: user.id })
-      .then(({ data }) => setJobs(Array.isArray(data) ? data : data.results ?? []))
+    getJobs()
+      .then(({ data }) => {
+        const all = Array.isArray(data) ? data : data.results ?? []
+        setJobs(all.filter((j) => j.employer?.id === user.id))
+      })
       .finally(() => setLoading(false))
   }, [user.id])
 
@@ -146,7 +138,7 @@ function EmployerDashboard() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <h3 className="font-display text-lg text-text">{job.title}</h3>
-                        <p className="text-sm text-muted">{job.company_name} · {job.location}</p>
+                        <p className="text-sm text-muted">{job.location}</p>
                       </div>
                       <span className="font-mono text-[10px] px-2 py-1 rounded shrink-0"
                         style={{ color: meta.color, backgroundColor: meta.bg, border: `1px solid ${meta.color}40` }}>
@@ -156,7 +148,7 @@ function EmployerDashboard() {
 
                     <div className="flex gap-3 mt-4 flex-wrap">
                       <button onClick={() => toggleExpand(job.id)} className="btn-secondary text-xs py-1.5 px-3">
-                        {isExpanded ? 'Hide' : 'View'} applicants
+                        {isExpanded ? 'Hide' : 'View'} applicants ({job.application_count ?? 0})
                       </button>
                       <button onClick={() => navigate(`/post-job/${job.id}`)} className="btn-secondary text-xs py-1.5 px-3">
                         Edit
@@ -178,7 +170,11 @@ function EmployerDashboard() {
                             {apps.map((app) => (
                               <div key={app.id} className="flex items-center justify-between gap-3 bg-surface-light rounded-lg px-4 py-3">
                                 <div>
-                                  <p className="text-sm text-text font-medium">{app.applicant_name ?? `Applicant #${app.applicant}`}</p>
+                                  <p className="text-sm text-text font-medium">
+                                    {app.applicant?.first_name
+                                      ? `${app.applicant.first_name} ${app.applicant.last_name}`.trim()
+                                      : app.applicant?.username ?? `Applicant #${app.applicant}`}
+                                  </p>
                                   <p className="text-xs text-muted font-mono">
                                     {new Date(app.applied_at).toLocaleDateString('en-US', { dateStyle: 'medium' })}
                                   </p>
@@ -188,7 +184,7 @@ function EmployerDashboard() {
                                   onChange={(e) => handleStatusChange(app.id, e.target.value, job.id)}
                                   className="text-xs py-1 px-2"
                                 >
-                                  {['pending', 'reviewed', 'accepted', 'rejected'].map((s) => (
+                                  {STATUS_OPTIONS.map((s) => (
                                     <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
                                   ))}
                                 </select>
@@ -209,7 +205,6 @@ function EmployerDashboard() {
   )
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { user } = useAuth()
   return (

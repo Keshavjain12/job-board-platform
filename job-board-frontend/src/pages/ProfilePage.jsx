@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
-import { getMyProfile, updateProfile } from '../api/jobs.js'
+import { getMyProfile, createProfile, updateProfile } from '../api/jobs.js'
 import Spinner from '../components/Spinner.jsx'
 
 export default function ProfilePage() {
   const { user } = useAuth()
-  const [form, setForm] = useState({ bio: '', skills: '', resume_url: '', linkedin: '', github: '' })
+  const [profileId, setProfileId] = useState(null)
+  const [form, setForm] = useState({ headline: '', bio: '', skills: '' })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -14,13 +15,16 @@ export default function ProfilePage() {
   useEffect(() => {
     getMyProfile()
       .then(({ data }) => {
-        setForm({
-          bio: data.bio ?? '',
-          skills: data.skills ?? '',
-          resume_url: data.resume_url ?? '',
-          linkedin: data.linkedin ?? '',
-          github: data.github ?? '',
-        })
+        const list = Array.isArray(data) ? data : data.results ?? []
+        const mine = list[0]
+        if (mine) {
+          setProfileId(mine.id)
+          setForm({
+            headline: mine.headline ?? '',
+            bio: mine.bio ?? '',
+            skills: mine.skills ?? '',
+          })
+        }
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -36,7 +40,12 @@ export default function ProfilePage() {
     setSaving(true)
     setError('')
     try {
-      await updateProfile(form)
+      if (profileId) {
+        await updateProfile(profileId, form)
+      } else {
+        const { data } = await createProfile(form)
+        setProfileId(data.id)
+      }
       setSaved(true)
     } catch {
       setError('Could not save profile. Please try again.')
@@ -65,6 +74,11 @@ export default function ProfilePage() {
           )}
 
           <div className="form-group">
+            <label className="form-label">Headline</label>
+            <input name="headline" className="form-input" placeholder="e.g. Backend Developer" value={form.headline} onChange={set} />
+          </div>
+
+          <div className="form-group">
             <label className="form-label">Bio</label>
             <textarea name="bio" rows={4} className="form-input resize-none" placeholder="Tell employers about yourself…" value={form.bio} onChange={set} />
           </div>
@@ -73,22 +87,6 @@ export default function ProfilePage() {
             <label className="form-label">Skills</label>
             <input name="skills" className="form-input" placeholder="e.g. Python, React, SQL, Django" value={form.skills} onChange={set} />
             <p className="text-muted text-xs mt-1">Comma-separated list of skills</p>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Resume URL</label>
-            <input name="resume_url" type="url" className="form-input" placeholder="https://drive.google.com/…" value={form.resume_url} onChange={set} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="form-group">
-              <label className="form-label">LinkedIn</label>
-              <input name="linkedin" type="url" className="form-input" placeholder="https://linkedin.com/in/…" value={form.linkedin} onChange={set} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">GitHub</label>
-              <input name="github" type="url" className="form-input" placeholder="https://github.com/…" value={form.github} onChange={set} />
-            </div>
           </div>
 
           <button type="submit" disabled={saving} className="btn-primary flex items-center gap-2 self-start">
