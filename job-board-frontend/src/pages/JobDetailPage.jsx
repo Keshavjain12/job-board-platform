@@ -98,7 +98,7 @@ export default function JobDetailPage() {
             <div className="bg-teal/10 text-teal border border-teal/30 rounded-lg px-5 py-4 text-sm font-medium">
               ✓ Application submitted! Check your dashboard to track its status.
             </div>
-          ) : user?.role === 'job_seeker' || !user ? (
+          ) : user?.role === 'seeker' || !user ? (
             <>
               {applyOpen ? (
                 <div className="flex flex-col gap-3">
