@@ -1,12 +1,18 @@
+# Python
+venv/
 __pycache__/
 *.pyc
-.env
+*.pyo
 db.sqlite3
-/media/
-/staticfiles/
-.venv/
-venv/
-*.egg-info/
 .pytest_cache/
-.coverage
-htmlcov/
+
+# Environment
+.env
+
+# Node
+node_modules/
+dist/
+
+# OS
+.DS_Store
+Thumbs.db
